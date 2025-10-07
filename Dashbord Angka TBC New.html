@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Kasus Tuberkulosis (TBC) - Kecamatan Labuhan Badas</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            background-color: #5e17ab;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(94, 23, 171, 0.3);
+        }
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .chart-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(94, 23, 171, 0.1);
+            margin-bottom: 30px;
+        }
+        .update-section {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(94, 23, 171, 0.1);
+            display: none; /* Disembunyikan secara default */
+        }
+        .update-section.admin-visible {
+            display: block; /* Tampil jika admin login */
+        }
+        .update-section h3 {
+            color: #5e17ab;
+            margin-top: 0;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #5e17ab;
+            font-weight: bold;
+        }
+        input[type="number"], input[type="text"], input[type="password"], input[type="date"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #5e17ab;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #5e17ab;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #4a1390;
+        }
+        .locations {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        #myChart {
+            max-height: 500px;
+        }
+        .login-section {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 300px;
+            box-shadow: 0 4px 15px rgba(94, 23, 171, 0.3);
+        }
+        .close {
+            color: #5e17ab;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover {
+            color: #4a1390;
+        }
+        .status {
+            text-align: center;
+            color: #5e17ab;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .logout-btn {
+            background-color: #dc3545;
+        }
+        .logout-btn:hover {
+            background-color: #c82333;
+        }
+        .last-update {
+            text-align: center;
+            color: #5e17ab;
+            font-style: italic;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Dashboard Angka Kasus Tuberkulosis (TBC)</h1>
+        <p>Desa Karang Dima, Desa Labuhan Badas, Desa Labuhan Sumbawa, dan UPT. Puskesmas Kecamatan Labuhan Badas Unit 1</p>
+        <div id="status" class="status"></div>
+    </div>
+
+    <div class="container">
+        <div class="login-section">
+            <button id="loginBtn" onclick="openLoginModal()">Login Admin</button>
+            <button id="logoutBtn" class="logout-btn" onclick="logout()" style="display: none;">Logout</button>
+        </div>
+
+        <div class="chart-container">
+            <h2 style="color: #5e17ab; text-align: center;">Grafik Kasus TBC (Data Tahunan Terbaru)</h2>
+            <div id="lastUpdate" class="last-update">Terakhir Diupdate: Belum ada update</div>
+            <canvas id="myChart"></canvas>
+        </div>
+
+        <div id="updateSection" class="update-section">
+            <h3>Update Data Kasus TBC (Hanya untuk Admin)</h3>
+            <p>Masukkan angka kasus terbaru untuk setiap lokasi dan tanggal update, lalu klik "Update Grafik" untuk memperbarui visualisasi.</p>
+            <div class="locations">
+                <div class="form-group">
+                    <label for="karangDima">Desa Karang Dima:</label>
+                    <input type="number" id="karangDima" min="0" value="45">
+                </div>
+                <div class="form-group">
+                    <label for="labuhanBadas">Desa Labuhan Badas:</label>
+                    <input type="number" id="labuhanBadas" min="0" value="62">
+                </div>
+                <div class="form-group">
+                    <label for="labuhanSumbawa">Desa Labuhan Sumbawa:</label>
+                    <input type="number" id="labuhanSumbawa" min="0" value="38">
+                </div>
+                <div class="form-group">
+                    <label for="puskesmas">UPT. Puskesmas Kecamatan Labuhan Badas Unit 1:</label>
+                    <input type="number" id="puskesmas" min="0" value="55">
+                </div>
+                <div class="form-group">
+                    <label for="updateDate">Tanggal Update:</label>
+                    <input type="date" id="updateDate">
+                </div>
+            </div>
+            <button onclick="updateChart()">Update Grafik</button>
+        </div>
+    </div>
+
+    <!-- Modal Login -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeLoginModal()">&times;</span>
+            <h3 style="color: #5e17ab;">Login Admin</h3>
+            <div class="form-group">
+                <label for="username">Username:</label>
+                <input type="text" id="username" placeholder="Masukkan username">
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" placeholder="Masukkan password">
+            </div>
+            <button onclick="login()">Login</button>
+        </div>
+    </div>
+
+    <script>
+        // Data awal (dummy - angka kasus tahunan)
+        let dataKasus = {
+            labels: ['Desa Karang Dima', 'Desa Labuhan Badas', 'Desa Labuhan Sumbawa', 'UPT. Puskesmas Labuhan Badas Unit 1'],
+            datasets: [{
+                label: 'Jumlah Kasus TBC',
+                data: [45, 62, 38, 55], // Nilai awal
+                backgroundColor: [
+                    '#5e17ab',
+                    '#7b2cbf',
+                    '#a855f7',
+                    '#c084fc'
+                ], // Variasi warna dominan #5e17ab
+                borderColor: '#5e17ab',
+                borderWidth: 2,
+                borderRadius: 10
+            }]
+        };
+
+        // Inisialisasi chart
+        const ctx = document.getElementById('myChart').getContext('2d');
+        const myChart = new Chart(ctx, {
+            type: 'bar', // Bar chart dengan animasi bawaan Chart.js
+            data: dataKasus,
+            options: {
+                responsive: true,
+                animation: {
+                    duration: 2000, // Animasi 2 detik
+                    easing: 'easeInOutQuart'
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(94, 23, 171, 0.1)'
+                        },
+                        ticks: {
+                            color: '#5e17ab'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(94, 23, 171, 0.1)'
+                        },
+                        ticks: {
+                            color: '#5e17ab'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#5e17ab'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Fungsi autentikasi sederhana (demo: username: 'admin', password: 'admin123')
+        function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            if (username === 'admin' && password === 'admin123') {
+                localStorage.setItem('isAdmin', 'true');
+                document.getElementById('status').innerText = 'Status: Admin Terautentikasi';
+                document.getElementById('updateSection').classList.add('admin-visible');
+                document.getElementById('loginBtn').style.display = 'none';
+                document.getElementById('logoutBtn').style.display = 'inline-block';
+                closeLoginModal();
+                alert('Login berhasil! Anda sekarang dapat mengupdate data.');
+            } else {
+                alert('Username atau password salah! Username: admin, Password: admin123');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('isAdmin');
+            document.getElementById('status').innerText = 'Status: User Biasa (Hanya Lihat)';
+            document.getElementById('updateSection').classList.remove('admin-visible');
+            document.getElementById('loginBtn').style.display = 'inline-block';
+            document.getElementById('logoutBtn').style.display = 'none';
+            // Reset input values jika perlu
+            document.getElementById('karangDima').value = '45';
+            document.getElementById('labuhanBadas').value = '62';
+            document.getElementById('labuhanSumbawa').value = '38';
+            document.getElementById('puskesmas').value = '55';
+            document.getElementById('updateDate').value = '';
+        }
+
+        function openLoginModal() {
+            document.getElementById('loginModal').style.display = 'block';
+        }
+
+        function closeLoginModal() {
+            document.getElementById('loginModal').style.display = 'none';
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+        }
+
+        // Fungsi untuk update chart (hanya jika admin)
+        function updateChart() {
+            if (!localStorage.getItem('isAdmin')) {
+                alert('Anda harus login sebagai admin untuk mengupdate data!');
+                return;
+            }
+            const karangDima = parseInt(document.getElementById('karangDima').value) || 0;
+            const labuhanBadas = parseInt(document.getElementById('labuhanBadas').value) || 0;
+            const labuhanSumbawa = parseInt(document.getElementById('labuhanSumbawa').value) || 0;
+            const puskesmas = parseInt(document.getElementById('puskesmas').value) || 0;
+            const updateDate = document.getElementById('updateDate').value || new Date().toISOString().split('T')[0]; // Default hari ini jika kosong
+
+            myChart.data.datasets[0].data = [karangDima, labuhanBadas, labuhanSumbawa, puskesmas];
+            myChart.update('active', { duration: 1500 }); // Animasi update 1.5 detik
+
+            // Simpan tanggal update ke localStorage
+            const formattedDate = new Date(updateDate).toLocaleDateString('id-ID');
+            localStorage.setItem('lastUpdateDate', formattedDate);
+            document.getElementById('lastUpdate').innerText = `Terakhir Diupdate: ${formattedDate}`;
+
+            alert(`Data berhasil diupdate pada ${formattedDate}! Grafik akan beranimasi ulang.`);
+        }
+
+        // Cek status login dan tanggal update saat load halaman
+        window.onload = function() {
+            if (localStorage.getItem('isAdmin') === 'true') {
+                document.getElementById('status').innerText = 'Status: Admin Terautentikasi';
+                document.getElementById('updateSection').classList.add('admin-visible');
+                document.getElementById('loginBtn').style.display = 'none';
+                document.getElementById('logoutBtn').style.display = 'inline-block';
+            } else {
+                document.getElementById('status').innerText = 'Status: User Biasa (Hanya Lihat)';
+            }
+
+            // Load tanggal terakhir update
+            const lastUpdateDate = localStorage.getItem('lastUpdateDate');
+            if (lastUpdateDate) {
+                document.getElementById('lastUpdate').innerText = `Terakhir Diupdate: ${lastUpdateDate}`;
+            } else {
+                document.getElementById('lastUpdate').innerText = 'Terakhir Diupdate: Belum ada update';
+            }
+
+            // Set tanggal default untuk input date (hari ini)
+            document.getElementById('updateDate').value = new Date().toISOString().split('T')[0];
+        };
+
+        // Tutup modal jika klik di luar
+        window.onclick = function(event) {
+            const modal = document.getElementById('loginModal');
+            if (event.target == modal) {
+                closeLoginModal();
+            }
+        }
+    </script>
+</body>
+</html>
